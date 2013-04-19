@@ -1,1 +1,301 @@
-/usr/local/bin/SFTP
+#!/bin/sh
+#
+# SFTP get [user@]host[:port] directory file ...
+#                                           - secure FTP files from dir on host
+#
+# SFTP put [user@]host[:port] directory file ...
+#                                           - secure FTP files to dir on host
+#
+# SFTP cmp [user@]host[:port] directory file [localfile]
+#                                           - compare file with local file
+#
+# Sat Apr 13 14:50:11 BST 2013
+#
+
+
+<<'______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________'
+
+Copyright (C) 2013 Peter Scott - p.scott@shu.ac.uk
+
+Licence
+=======
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+Purpose
+=======
+
+   This script relies on password-less logins to move files between
+   hosts.  It can be used from cron and from other scripts.
+
+
+SSH Versions
+============
+
+   This script was written to work with SSHs from: SSH.com, Open-SSH
+   and Sun.  It would have been cleverer if it hadn't had to be compatible
+   with Sun's dumbed-down version of Open-SSH.
+
+
+Examples
+========
+
+   $ SFTP get user@some.com:32769 .               file1 file2 file3
+   $ SFTP get user@some.com       .               file1 file2 file3
+   $ SFTP get      some.com       .               file1 file2 file3
+   $ SFTP get      some.com       bin/Linux       file1 file2 file3
+   $ SFTP get      some.com       /usr/local/bin  file1 file2 file3
+   $ SFTP get      home           .               file1 file2 file3
+   $ SFTP get      work           .               file1 file2 file3
+   $
+   $ SFTP put user@some.com       .               file1 file2 file3
+   $
+   $ SFTP cmp user@some.com       .               file
+   $ SFTP cmp user@some.com       .               file localfile
+   $
+
+
+Environment Variables
+=====================
+
+   SFTP_HOME and SFTP_WORK if set to a host address allow 'home' and
+   'work' to be used in place of a host name.  These can be set in
+   .bash_profile etc.
+
+
+Limitations
+===========
+
+   It only works with modern Bash and Bourne shells.
+
+
+Warnings
+========
+
+   Login and shell startup scripts must be silent if OpenSSH is used.
+   If startup scripts send output, sftp will not be able to connect to
+   the OpenSSH daemon.  You may have to set up a $HOME/.hushlogin file
+   to achieve silent login.
+
+   Startup scripts must leave the user in the home directory, or some
+   other predictable directory, if relative pathnames are to be used.
+
+
+Bugs
+====
+
+   email: p.scott@shu.ac.uk
+
+
+______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________
+
+
+# usage - display usage message
+#
+usage (){
+  echo "Usage: $NAME get|put [user@]host|home|work[:port] dir file ..." >&2
+  echo "       $NAME cmp     [user@]host|home|work[:port] dir file [localfile]" >&2
+  exit 1
+}
+
+
+# mkTmp - make temp dir and delete it automatically on exit
+#         Eg: ... > $TMP/temp
+#
+mkTmp (){
+  TMP=/tmp/$NAME.$$
+  trap 'rm -fr $TMP > /dev/null 2>&1' 0 1 2 3 4 5 6 7 8 9 10    12 13 14 15
+  mkdir $TMP
+}
+
+
+# xfer get | put file ... - get or put files
+#
+xfer (){
+  mode=$1
+  shift 
+  {
+       test $version = commercial && printf "binary\ncd \"$dir\"\n"
+       for file
+       do   if [ $mode = get ]
+            then echo "$mode \"$file\""
+            else if [ -f "$file" ]
+                 then echo "$mode \"$file\""
+                 else echo "$NAME: '$file': doesn't exist (skipped)" >&2
+                 fi
+            fi
+       done
+       echo quit
+  } >> $TMP/commands
+
+  if [ $version = commercial ]
+  then sftp $port -B $TMP/commands $host                    > $TMP/errors
+  else sftp $port -b $TMP/commands $host:"$dir" > $TMP/log 2> $TMP/errors
+  fi
+  return=$?
+  if [ $version = commercial ]
+  then case $return in
+            0)
+                 return ;;
+            2)
+                 echo "$NAME: '$dir': couldn't access"
+                 return $return
+                 ;;
+            6)   
+                 printf "$NAME: no such file(s): "
+                 grep ' (src): no such file' $TMP/errors |
+                   sed 's/.(.*/"/
+                        s/[^ ]*: /"/' |
+                     tr -s '\n\r' ' '
+                 echo
+                 return $return
+                 ;;
+            *)
+                 echo "$NAME: sftp gave error $return"
+                 cat $TMP/errors
+                 return $return
+                 ;;
+       esac
+  else case $return in
+            0)   errorLength=`wc -l < $TMP/errors`
+                 test $errorLength -eq 1 && return 0
+                 logLength=`wc -l < $TMP/log`
+                 if [ $logLength -eq 0 ]
+                 then echo "$NAME: '$dir': couldn't access"
+                      return 3
+                 fi
+                 permissions=`grep -c ' Permission denied' $TMP/errors`
+                 if [ $permissions -ne 0 ]
+                 then printf "$NAME: permission denied on $permissions file"
+                      test $permissions -gt 1 && printf 's'
+                      echo
+                 fi
+                 missing=`grep -c '^File .* not found.' $TMP/errors`
+                 if [ $missing -ne 0 ]
+                 then printf "$NAME: $missing remote file"
+                      test $missing -gt 1 && printf 's'
+                      printf " did not exist: "
+                      sed -n '/^File \(".*"\) not found./s//\1/p' $TMP/errors |
+                        tr -s '\n\r' ' '
+                      echo
+                      return 4
+                 fi
+                 ;;
+  
+            *)
+                 echo "$NAME: sftp gave error $return"
+                 cat $TMP/errors
+                 return $return ;;
+       esac
+  fi >&2
+}
+
+
+# prevent the user giving the script a name with spaces in it
+# (This saves quoting $TMP/....)
+#
+case $0 in
+     *' '*) echo "\`$0': I don't allow spaces in command names" >&2
+            exit 2
+esac
+NAME=`basename $0`
+test $# -lt 4 && usage
+mode=$1
+host=$2
+dir="$3"
+shift 3
+case $mode in
+     get | put | cmp)
+          : ;;
+     *) 
+          echo "$NAME: $mode: first parameter must be get, put or cmp" >&2
+          exit 2
+          ;;
+esac
+version=`ssh -V 2>&1`
+case $version in
+     *'SSH Secure Shell'*)
+          version=commercial ;;
+     OpenSSH*)
+          version=open ;;
+     Sun_SSH_1*)
+          version=open ;;
+     *)   
+          echo "$NAME: warning: unknown SSH (assuming OpenSSH)" >&2
+          version=open
+          ;;
+esac
+case $host in
+     *:*:*)
+          echo "$NAME: $host: too many colons" >&2
+          exit 3
+          ;;
+     *:*)
+          port="-oPort=`echo $host | sed 's/.*://'`"
+          host=`echo $host | sed 's/:.*//'`
+          ;;
+esac
+if [ "SFTP_HOME" ]
+then case $host in
+          home) 
+                host=$SFTP_HOME ;;
+          *@home)
+                host=`echo $host | sed "s/@home\$/@$SFTP_HOME/"` ;;
+     esac
+fi
+if [ "SFTP_WORK" ]
+then case $host in
+          work) 
+                host=$SFTP_WORK ;;
+          *@work)
+                host=`echo $host | sed "s/@work\$/@$SFTP_WORK/"` ;;
+     esac
+fi
+case $mode in
+     get | put)
+          mkTmp
+          xfer $mode "$@"
+          exit $?
+          ;;
+     cmp)
+          test $# -eq 1 || test $# -eq 2 || usage
+          file="$1"
+          if [ "$2" ]
+          then localfile="$2"
+          else localfile="$file"
+          fi
+          if [ ! -f "$localfile" ]
+          then echo "$NAME: '$localfile': no such file" >&2
+               exit 4
+          fi
+          mkTmp
+          (    cd $TMP
+               mkdir temp     # avoid possibility of name clashes
+               cd temp
+               xfer get "$file" 2> /dev/null
+          )
+          if [ $? -ne 0 ]
+          then echo "$NAME: couldn't get '$dir/$file' from $host" >&2
+               exit 5
+          fi
+          cmp -s "$localfile" "$TMP/temp/$file"
+          if [ $? -ne 0 ]
+          then printf '\nLocal\t\t\t\t\t\t\t\t\t\t\tRemote\n'
+               printf   '~~~~~\t\t\t\t\t\t\t\t\t\t\t~~~~~~\n'
+               sdiff -w 170 "$localfile" "$TMP/temp/$file"
+               exit 6
+          fi
+          ;;
+esac
