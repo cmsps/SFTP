@@ -9,7 +9,7 @@
 # SFTP cmp [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Sat Apr 13 14:50:11 BST 2013
+# Mon Jun 17 12:50:27 BST 2013
 #
 
 
@@ -292,8 +292,8 @@ case $mode in
           fi
           cmp -s "$localfile" "$TMP/temp/$file"
           if [ $? -ne 0 ]
-          then printf '\nLocal\t\t\t\t\t\t\t\t\t\t\tRemote\n'
-               printf   '~~~~~\t\t\t\t\t\t\t\t\t\t\t~~~~~~\n'
+          then printf '\n%-88s%s'   "Local $localfile" "Remote $file"
+               printf '\n%-88s%s\n' "~~~~~"             "~~~~~~"
                sdiff -w 170 "$localfile" "$TMP/temp/$file"
                exit 6
           fi
