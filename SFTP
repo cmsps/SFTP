@@ -9,7 +9,7 @@
 # SFTP cmp [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Mon Jun 17 12:50:27 BST 2013
+# Sat Aug 10 18:06:00 BST 2013
 #
 
 
@@ -117,7 +117,9 @@ usage (){
 mkTmp (){
   TMP=/tmp/$NAME.$$
   trap 'rm -fr $TMP > /dev/null 2>&1' 0 1 2 3 4 5 6 7 8 9 10    12 13 14 15
-  mkdir $TMP
+  mkdir $TMP && return
+  echo " $NAME: couldn't make $TMP directory"  >&2
+  exit 2
 }
 
 
@@ -204,11 +206,11 @@ xfer (){
 
 
 # prevent the user giving the script a name with spaces in it
-# (This saves quoting $TMP/....)
+# -- saving the hassle of quoting internal file names
 #
 case $0 in
      *' '*) echo "\`$0': I don't allow spaces in command names" >&2
-            exit 2
+            exit 3
 esac
 NAME=`basename $0`
 test $# -lt 4 && usage
@@ -221,7 +223,7 @@ case $mode in
           : ;;
      *) 
           echo "$NAME: $mode: first parameter must be get, put or cmp" >&2
-          exit 2
+          exit 4
           ;;
 esac
 version=`ssh -V 2>&1`
@@ -240,7 +242,7 @@ esac
 case $host in
      *:*:*)
           echo "$NAME: $host: too many colons" >&2
-          exit 3
+          exit 5
           ;;
      *:*)
           port="-oPort=`echo $host | sed 's/.*://'`"
@@ -278,7 +280,7 @@ case $mode in
           fi
           if [ ! -f "$localfile" ]
           then echo "$NAME: '$localfile': no such file" >&2
-               exit 4
+               exit 6
           fi
           mkTmp
           (    cd $TMP
@@ -288,14 +290,14 @@ case $mode in
           )
           if [ $? -ne 0 ]
           then echo "$NAME: couldn't get '$dir/$file' from $host" >&2
-               exit 5
+               exit 7
           fi
           cmp -s "$localfile" "$TMP/temp/$file"
           if [ $? -ne 0 ]
           then printf '\n%-88s%s'   "Local $localfile" "Remote $file"
                printf '\n%-88s%s\n' "~~~~~"             "~~~~~~"
                sdiff -w 170 "$localfile" "$TMP/temp/$file"
-               exit 6
+               exit 8
           fi
           ;;
 esac
