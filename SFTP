@@ -9,13 +9,13 @@
 # SFTP cmp [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Sat Aug 10 18:06:00 BST 2013
+# Tue Oct 29 15:48:47 GMT 2013
 #
 
 
 <<'______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________'
 
-Copyright (C) 2013 Peter Scott - p.scott@shu.ac.uk
+Copyright (C) 2014 Peter Scott - p.scott@shu.ac.uk
 
 Licence
 =======
@@ -205,14 +205,16 @@ xfer (){
 }
 
 
-# prevent the user giving the script a name with spaces in it
+# prevent the user giving the script a name with white space in it
 # -- saving the hassle of quoting internal file names
 #
-case $0 in
-     *' '*) echo "\`$0': I don't allow spaces in command names" >&2
-            exit 3
-esac
-NAME=`basename $0`
+NAME=`basename "$0"`
+words=`echo "$NAME" | wc -w`
+if [ $words -ne 1 ]
+then echo "\`$0': I don't allow white space in command names" >&2
+     exit 3
+fi
+
 test $# -lt 4 && usage
 mode=$1
 host=$2
