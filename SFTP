@@ -9,7 +9,7 @@
 # SFTP cmp [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Tue Oct 29 15:48:47 GMT 2013
+# Tue May 6 19:50:50 BST 2014
 #
 
 
@@ -123,6 +123,25 @@ mkTmp (){
 }
 
 
+# checkSimple file - check file is plain, readable, not empty (Bourne shell)
+#
+checkSimple(){
+  file=$1
+  ls "$file" > /dev/null 2>&1
+  if [ $? -ne 0 ]
+  then echo "$NAME: \`$file': doesn't exist (skipped)" >&2
+       return 1
+  elif [ -d "$file" ]
+  then echo "$NAME: \`$file': is a directory (skipped)" >&2
+       return 2
+  elif [ ! -r "$file" ]
+  then echo "$NAME: \`$file': isn't readable (skipped)" >&2
+       return 3
+  fi
+  return 0
+}
+
+
 # xfer get | put file ... - get or put files
 #
 xfer (){
@@ -133,9 +152,8 @@ xfer (){
        for file
        do   if [ $mode = get ]
             then echo "$mode \"$file\""
-            else if [ -f "$file" ]
+            else if checkSimple "$file"
                  then echo "$mode \"$file\""
-                 else echo "$NAME: '$file': doesn't exist (skipped)" >&2
                  fi
             fi
        done
