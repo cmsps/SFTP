@@ -9,7 +9,7 @@
 # SFTP cmp [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Sun Oct 19 19:50:00 BST 2014
+# Fri Jan 9 19:59:54 GMT 2015
 #
 
 
@@ -20,7 +20,7 @@ Copyright (C) 2015 Peter Scott - p.scott@shu.ac.uk
 Licence
 =======
 
-   This program is free software: you can redistribute it and/or modify
+   This program is free software: you can redistribute it and / or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
@@ -146,7 +146,7 @@ checkSimple(){
 #
 xfer (){
   mode=$1
-  shift 
+  shift
   {
        test $version = commercial && printf "binary\ncd \"$dir\"\n"
        for file
@@ -167,57 +167,57 @@ xfer (){
   return=$?
   if [ $version = commercial ]
   then case $return in
-            0)
-                 return ;;
-            2)
-                 echo "$NAME: '$dir': couldn't access"
-                 return $return
-                 ;;
-            6)   
-                 printf "$NAME: no such file(s): "
-                 grep ' (src): no such file' $TMP/errors |
-                   sed 's/.(.*/"/
-                        s/[^ ]*: /"/' |
-                     tr -s '\n\r' ' '
-                 echo
-                 return $return
-                 ;;
-            *)
-                 echo "$NAME: sftp gave error $return"
-                 cat $TMP/errors
-                 return $return
-                 ;;
+         0)
+            return
+            ;;
+         2)
+            echo "$NAME: '$dir': couldn't access"
+            return $return
+            ;;
+         6)
+            printf "$NAME: no such file(s): "
+            grep ' (src): no such file' $TMP/errors |
+              sed 's/.(.*/"/
+                   s/[^ ]*: /"/' |
+                   tr -s '\n\r' ' '
+            echo
+            return $return
+            ;;
+         *)
+            echo "$NAME: sftp gave error $return"
+            cat $TMP/errors
+            return $return
        esac
   else case $return in
-            0)   errorLength=`wc -l < $TMP/errors`
-                 test $errorLength -eq 1 && return 0
-                 logLength=`wc -l < $TMP/log`
-                 if [ $logLength -eq 0 ]
-                 then echo "$NAME: '$dir': couldn't access"
-                      return 3
-                 fi
-                 permissions=`grep -c ' Permission denied' $TMP/errors`
-                 if [ $permissions -ne 0 ]
-                 then printf "$NAME: permission denied on $permissions file"
-                      test $permissions -gt 1 && printf 's'
-                      echo
-                 fi
-                 missing=`grep -c '^File .* not found.' $TMP/errors`
-                 if [ $missing -ne 0 ]
-                 then printf "$NAME: $missing remote file"
-                      test $missing -gt 1 && printf 's'
-                      printf " did not exist: "
-                      sed -n '/^File \(".*"\) not found./s//\1/p' $TMP/errors |
-                        tr -s '\n\r' ' '
-                      echo
-                      return 4
-                 fi
-                 ;;
-  
-            *)
-                 echo "$NAME: sftp gave error $return"
-                 cat $TMP/errors
-                 return $return ;;
+         0)
+            errorLength=`wc -l < $TMP/errors`
+            test $errorLength -eq 1 && return 0
+            logLength=`wc -l < $TMP/log`
+            if [ $logLength -eq 0 ]
+            then echo "$NAME: '$dir': couldn't access"
+                 return 3
+            fi
+            permissions=`grep -c ' Permission denied' $TMP/errors`
+            if [ $permissions -ne 0 ]
+            then printf "$NAME: permission denied on $permissions file"
+                 test $permissions -gt 1 && printf 's'
+                 echo
+            fi
+            missing=`grep -c '^File .* not found.' $TMP/errors`
+            if [ $missing -ne 0 ]
+            then printf "$NAME: $missing remote file"
+                 test $missing -gt 1 && printf 's'
+                 printf " did not exist: "
+                 sed -n '/^File \(".*"\) not found./s//\1/p' $TMP/errors |
+                   tr -s '\n\r' ' '
+                 echo
+                 return 4
+            fi
+            ;;
+         *)
+            echo "$NAME: sftp gave error $return"
+            cat $TMP/errors
+            return $return
        esac
   fi >&2
 }
@@ -239,85 +239,81 @@ host=$2
 dir="$3"
 shift 3
 case $mode in
-     get | put | cmp)
-          : ;;
-     *) 
-          echo "$NAME: $mode: first parameter must be get, put or cmp" >&2
-          exit 4
-          ;;
+  get | put | cmp)
+     : ;;
+  *)
+     echo "$NAME: $mode: first parameter must be get, put or cmp" >&2
+     exit 4
 esac
 version=`ssh -V 2>&1`
 case $version in
-     *'SSH Secure Shell'*)
-          version=commercial ;;
-     OpenSSH*)
-          version=open ;;
-     Sun_SSH_1*)
-          version=open ;;
-     *)   
-          echo "$NAME: warning: unknown SSH (assuming OpenSSH)" >&2
-          version=open
-          ;;
+  *'SSH Secure Shell'*)
+     version=commercial ;;
+  OpenSSH*)
+     version=open ;;
+  Sun_SSH_1*)
+     version=open ;;
+  *)
+     echo "$NAME: warning: unknown SSH (assuming OpenSSH)" >&2
+     version=open
 esac
 case $host in
-     *:*:*)
-          echo "$NAME: $host: too many colons" >&2
-          exit 5
-          ;;
-     *:*)
-          port="-oPort=`echo $host | sed 's/.*://'`"
-          host=`echo $host | sed 's/:.*//'`
-          ;;
+  *:*:*)
+     echo "$NAME: $host: too many colons" >&2
+     exit 5
+     ;;
+  *:*)
+     port="-oPort=`echo $host | sed 's/.*://'`"
+     host=`echo $host | sed 's/:.*//'`
 esac
 if [ "SFTP_HOME" ]
 then case $host in
-          home) 
-                host=$SFTP_HOME ;;
-          *@home)
-                host=`echo $host | sed "s/@home\$/@$SFTP_HOME/"` ;;
+       home)
+           host=$SFTP_HOME ;;
+       *@home)
+           host=`echo $host | sed "s/@home\$/@$SFTP_HOME/"`
      esac
 fi
 if [ "SFTP_WORK" ]
 then case $host in
-          work) 
-                host=$SFTP_WORK ;;
-          *@work)
-                host=`echo $host | sed "s/@work\$/@$SFTP_WORK/"` ;;
+       work)
+           host=$SFTP_WORK ;;
+       *@work)
+           host=`echo $host | sed "s/@work\$/@$SFTP_WORK/"`
      esac
 fi
 case $mode in
-     get | put)
-          mkTmp
-          xfer $mode "$@"
-          exit $?
-          ;;
-     cmp)
-          test $# -eq 1 || test $# -eq 2 || usage
-          file="$1"
-          if [ "$2" ]
-          then localfile="$2"
-          else localfile="$file"
-          fi
-          if [ ! -f "$localfile" ]
-          then echo "$NAME: '$localfile': no such file" >&2
-               exit 6
-          fi
-          mkTmp
-          (    cd $TMP
-               mkdir temp     # avoid possibility of name clashes
-               cd temp
-               xfer get "$file" 2> /dev/null
-          )
-          if [ $? -ne 0 ]
-          then echo "$NAME: couldn't get '$dir/$file' from $host" >&2
-               exit 7
-          fi
-          cmp -s "$localfile" "$TMP/temp/$file"
-          if [ $? -ne 0 ]
-          then printf '\n%-88s%s'   "Local $localfile" "Remote $file"
-               printf '\n%-88s%s\n' "~~~~~"             "~~~~~~"
-               sdiff -w 170 "$localfile" "$TMP/temp/$file"
-               exit 8
-          fi
-          ;;
+  get | put)
+     mkTmp
+     xfer $mode "$@"
+     exit $?
+     ;;
+  cmp)
+     test $# -eq 1 || test $# -eq 2 || usage
+     file="$1"
+     if [ "$2" ]
+     then localfile="$2"
+     else localfile="$file"
+     fi
+     if [ ! -f "$localfile" ]
+     then echo "$NAME: '$localfile': no such file" >&2
+          exit 6
+     fi
+     mkTmp
+     ( cd $TMP
+       mkdir temp     # avoid possibility of name clashes
+       cd temp
+       xfer get "$file" 2> /dev/null
+     )
+     if [ $? -ne 0 ]
+     then echo "$NAME: couldn't get '$dir/$file' from $host" >&2
+          exit 7
+     fi
+     cmp -s "$localfile" "$TMP/temp/$file"
+     if [ $? -ne 0 ]
+     then printf '\n%-88s%s'   "Local $localfile" "Remote $file"
+          printf '\n%-88s%s\n' "~~~~~"             "~~~~~~"
+          sdiff -w 170 "$localfile" "$TMP/temp/$file"
+          exit 8
+     fi
 esac
