@@ -9,7 +9,7 @@
 # SFTP cmp [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Fri Jan 9 19:59:54 GMT 2015
+# Mon Jan 12 12:57:07 GMT 2015
 #
 
 
@@ -271,7 +271,7 @@ then case $host in
        home)
            host=$SFTP_HOME ;;
        *@home)
-           host=`echo $host | sed "s/@home\$/@$SFTP_HOME/"`
+           host=`echo $host | sed "s/@home\$/@$SFTP_HOME/"` ;;
      esac
 fi
 if [ "SFTP_WORK" ]
@@ -279,7 +279,7 @@ then case $host in
        work)
            host=$SFTP_WORK ;;
        *@work)
-           host=`echo $host | sed "s/@work\$/@$SFTP_WORK/"`
+           host=`echo $host | sed "s/@work\$/@$SFTP_WORK/"` ;;
      esac
 fi
 case $mode in
