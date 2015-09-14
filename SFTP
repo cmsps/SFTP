@@ -6,10 +6,10 @@
 # SFTP put [user@]host[:port] directory file ...
 #                                           - secure FTP files to dir on host
 #
-# SFTP cmp [user@]host[:port] directory file [localfile]
+# SFTP cmp [-s] [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Mon Jan 12 12:57:07 GMT 2015
+# Tue May 12 19:47:43 BST 2015
 #
 
 
@@ -105,8 +105,12 @@ ______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________
 # usage - display usage message
 #
 usage (){
-  echo "Usage: $NAME get|put [user@]host|home|work[:port] dir file ..." >&2
-  echo "       $NAME cmp     [user@]host|home|work[:port] dir file [localfile]" >&2
+  cat <<-! >&2
+	Usage: $NAME get | put  [user@]host|home|work[:port] dir file ...
+	       $NAME cmp [-s]   [user@]host|home|work[:port] dir file [localfile]
+	Option:
+	       -s   summary only -- no sdiff
+	!
   exit 1
 }
 
@@ -235,16 +239,23 @@ fi
 
 test $# -lt 4 && usage
 mode=$1
-host=$2
-dir="$3"
-shift 3
 case $mode in
-  get | put | cmp)
-     : ;;
+  get | put )
+     :
+     ;;
+  cmp)
+     if [ "$2" = -s ]
+     then summary=yes
+          shift
+     fi
+     ;;
   *)
      echo "$NAME: $mode: first parameter must be get, put or cmp" >&2
      exit 4
 esac
+host=$2
+dir="$3"
+shift 3
 version=`ssh -V 2>&1`
 case $version in
   *'SSH Secure Shell'*)
@@ -311,9 +322,12 @@ case $mode in
      fi
      cmp -s "$localfile" "$TMP/temp/$file"
      if [ $? -ne 0 ]
-     then printf '\n%-88s%s'   "Local $localfile" "Remote $file"
-          printf '\n%-88s%s\n' "~~~~~"             "~~~~~~"
-          sdiff -w 170 "$localfile" "$TMP/temp/$file"
+     then if [ "$summary" = yes ]
+          then echo "$NAME: $localfile and remote $file differ" >&2
+          else printf '\n%-88s%s'   "Local $localfile" "Remote $file"
+               printf '\n%-88s%s\n' "~~~~~"             "~~~~~~"
+               sdiff -w 170 "$localfile" "$TMP/temp/$file"
+          fi
           exit 8
      fi
 esac
