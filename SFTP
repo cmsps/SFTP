@@ -9,7 +9,7 @@
 # SFTP cmp [-s] [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Tue May 12 19:47:43 BST 2015
+# Mon May 15 14:25:22 BST 2017
 #
 
 
@@ -18,8 +18,7 @@
 Copyright (C) 2017 Peter Scott - p.scott@shu.ac.uk
 
 Licence
-=======
-
+-------
    This program is free software: you can redistribute it and / or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
@@ -33,25 +32,19 @@ Licence
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 Purpose
-=======
-
+-------
    This script relies on password-less logins to move files between
    hosts.  It can be used from cron and from other scripts.
 
-
 SSH Versions
-============
-
+------------
    This script was written to work with SSHs from: SSH.com, Open-SSH
    and Sun.  It would have been cleverer if it hadn't had to be compatible
    with Sun's dumbed-down version of Open-SSH.
 
-
 Examples
-========
-
+--------
    $ SFTP get user@some.com:32769 .               file1 file2 file3
    $ SFTP get user@some.com       .               file1 file2 file3
    $ SFTP get      some.com       .               file1 file2 file3
@@ -66,24 +59,18 @@ Examples
    $ SFTP cmp user@some.com       .               file localfile
    $
 
-
 Environment Variables
-=====================
-
+---------------------
    SFTP_HOME and SFTP_WORK if set to a host address allow 'home' and
    'work' to be used in place of a host name.  These can be set in
    .bash_profile etc.
 
-
 Limitations
-===========
-
+-----------
    It only works with modern Bash and Bourne shells.
 
-
 Warnings
-========
-
+--------
    Login and shell startup scripts must be silent if OpenSSH is used.
    If startup scripts send output, sftp will not be able to connect to
    the OpenSSH daemon.  You may have to set up a $HOME/.hushlogin file
@@ -92,12 +79,9 @@ Warnings
    Startup scripts must leave the user in the home directory, or some
    other predictable directory, if relative pathnames are to be used.
 
-
 Bugs
-====
-
+----
    email: p.scott@shu.ac.uk
-
 
 ______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________
 
@@ -115,14 +99,18 @@ usage (){
 }
 
 
-# mkTmp - make temp dir and delete it automatically on exit
-#         Eg: ... > $TMP/temp
+# mkTmp - make temp dir and delete it automatically on exit or failure
+#         Eg: mkTmp; ... > $TMP/temp
 #
-mkTmp (){
+mkTmp(){
   TMP=/tmp/$NAME.$$
-  trap 'rm -fr $TMP > /dev/null 2>&1' 0 1 2 3 4 5 6 7 8 9 10    12 13 14 15
+
+  # Beware of exit from a subshell and losing exit code
+  #
+  trap 'code=$?; rm -fr $TMP 2> /dev/null; exit $code' \
+                                   HUP INT QUIT ILL ABRT BUS FPE SEGV PIPE TERM
   mkdir $TMP && return
-  echo " $NAME: couldn't make $TMP directory"  >&2
+  echo "$NAME: couldn't make \`$TMP' directory" >&2
   exit 2
 }
 
@@ -132,14 +120,14 @@ mkTmp (){
 checkSimple(){
   file=$1
   ls "$file" > /dev/null 2>&1
-  if [ $? -ne 0 ]
-  then echo "$NAME: \`$file': doesn't exist (skipped)" >&2
+  if [ $? -ne 0 ] ;then
+       echo "$NAME: \`$file': doesn't exist (skipped)" >&2
        return 1
-  elif [ -d "$file" ]
-  then echo "$NAME: \`$file': is a directory (skipped)" >&2
+  elif [ -d "$file" ] ;then
+       echo "$NAME: \`$file': is a directory (skipped)" >&2
        return 2
-  elif [ ! -r "$file" ]
-  then echo "$NAME: \`$file': isn't readable (skipped)" >&2
+  elif [ ! -r "$file" ] ;then
+       echo "$NAME: \`$file': isn't readable (skipped)" >&2
        return 3
   fi
   return 0
@@ -153,24 +141,24 @@ xfer (){
   shift
   {
        test $version = commercial && printf "binary\ncd \"$dir\"\n"
-       for file
-       do   if [ $mode = get ]
-            then echo "$mode \"$file\""
-            else if checkSimple "$file"
-                 then echo "$mode \"$file\""
-                 fi
+       for file ;do
+            if [ $mode = get ] ;then
+                 echo "get \"$file\""
+            elif checkSimple "$file" ;then
+                 echo "put \"$file\""
             fi
        done
        echo quit
   } >> $TMP/commands
 
-  if [ $version = commercial ]
-  then sftp $port -B $TMP/commands $host                    > $TMP/errors
-  else sftp $port -b $TMP/commands $host:"$dir" > $TMP/log 2> $TMP/errors
+  if [ $version = commercial ] ;then
+       sftp $port -B $TMP/commands $host                    > $TMP/errors
+  else
+       sftp $port -b $TMP/commands $host:"$dir" > $TMP/log 2> $TMP/errors
   fi
   return=$?
-  if [ $version = commercial ]
-  then case $return in
+  if [ $version = commercial ] ;then
+       case $return in
          0)
             return
             ;;
@@ -192,24 +180,25 @@ xfer (){
             cat $TMP/errors
             return $return
        esac
-  else case $return in
+  else
+       case $return in
          0)
             errorLength=`wc -l < $TMP/errors`
             test $errorLength -eq 1 && return 0
             logLength=`wc -l < $TMP/log`
-            if [ $logLength -eq 0 ]
-            then echo "$NAME: '$dir': couldn't access"
+            if [ $logLength -eq 0 ] ;then
+                 echo "$NAME: '$dir': couldn't access"
                  return 3
             fi
             permissions=`grep -c ' Permission denied' $TMP/errors`
-            if [ $permissions -ne 0 ]
-            then printf "$NAME: permission denied on $permissions file"
+            if [ $permissions -ne 0 ] ;then
+                 printf "$NAME: permission denied on $permissions file"
                  test $permissions -gt 1 && printf 's'
                  echo
             fi
             missing=`grep -c '^File .* not found.' $TMP/errors`
-            if [ $missing -ne 0 ]
-            then printf "$NAME: $missing remote file"
+            if [ $missing -ne 0 ] ;then
+                 printf "$NAME: $missing remote file"
                  test $missing -gt 1 && printf 's'
                  printf " did not exist: "
                  sed -n '/^File \(".*"\) not found./s//\1/p' $TMP/errors |
@@ -232,8 +221,8 @@ xfer (){
 #
 NAME=`basename "$0"`
 words=`echo "$NAME" | wc -w`
-if [ $words -ne 1 ]
-then echo "\`$NAME': I don't allow white space in command names" >&2
+if [ $words -ne 1 ] ;then
+     echo "\`$NAME': I don't allow white space in command names" >&2
      exit 3
 fi
 
@@ -244,8 +233,8 @@ case $mode in
      :
      ;;
   cmp)
-     if [ "$2" = -s ]
-     then summary=yes
+     if [ "$2" = -s ] ;then
+          summary=yes
           shift
      fi
      ;;
@@ -277,20 +266,20 @@ case $host in
      port="-oPort=`echo $host | sed 's/.*://'`"
      host=`echo $host | sed 's/:.*//'`
 esac
-if [ "SFTP_HOME" ]
-then case $host in
+if [ "SFTP_HOME" ] ;then
+     case $host in
        home)
            host=$SFTP_HOME ;;
        *@home)
-           host=`echo $host | sed "s/@home\$/@$SFTP_HOME/"` ;;
+           host=`echo $host | sed "s/@home\$/@$SFTP_HOME/"`
      esac
 fi
-if [ "SFTP_WORK" ]
-then case $host in
+if [ "SFTP_WORK" ] ;then
+     case $host in
        work)
            host=$SFTP_WORK ;;
        *@work)
-           host=`echo $host | sed "s/@work\$/@$SFTP_WORK/"` ;;
+           host=`echo $host | sed "s/@work\$/@$SFTP_WORK/"`
      esac
 fi
 case $mode in
@@ -302,12 +291,13 @@ case $mode in
   cmp)
      test $# -eq 1 || test $# -eq 2 || usage
      file="$1"
-     if [ "$2" ]
-     then localfile="$2"
-     else localfile="$file"
+     if [ "$2" ] ;then
+          localfile="$2"
+     else
+          localfile="$file"
      fi
-     if [ ! -f "$localfile" ]
-     then echo "$NAME: '$localfile': no such file" >&2
+     if [ ! -f "$localfile" ] ;then
+          echo "$NAME: '$localfile': no such file" >&2
           exit 6
      fi
      mkTmp
@@ -316,15 +306,16 @@ case $mode in
        cd temp
        xfer get "$file" 2> /dev/null
      )
-     if [ $? -ne 0 ]
-     then echo "$NAME: couldn't get '$dir/$file' from $host" >&2
+     if [ $? -ne 0 ] ;then
+          echo "$NAME: couldn't get '$dir/$file' from $host" >&2
           exit 7
      fi
      cmp -s "$localfile" "$TMP/temp/$file"
-     if [ $? -ne 0 ]
-     then if [ "$summary" = yes ]
-          then echo "$NAME: $localfile and remote $file differ" >&2
-          else printf '\n%-88s%s'   "Local $localfile" "Remote $file"
+     if [ $? -ne 0 ] ;then
+          if [ "$summary" = yes ] ;then
+               echo "$NAME: $localfile and remote $file differ" >&2
+          else
+               printf '\n%-88s%s'   "Local $localfile" "Remote $file"
                printf '\n%-88s%s\n' "~~~~~"             "~~~~~~"
                sdiff -w 170 "$localfile" "$TMP/temp/$file"
           fi
