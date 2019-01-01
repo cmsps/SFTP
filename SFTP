@@ -9,13 +9,13 @@
 # SFTP cmp [-s] [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Sun May 21 20:11:05 BST 2017
+# Tue Jan 1 22:16:23 GMT 2019
 #
 
 
 <<'______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________'
 
-Copyright (C) 2018 Peter Scott - peterscott@pobox.com
+Copyright (C) 2019 Peter Scott - peterscott@pobox.com
 
 Licence
 -------
@@ -81,7 +81,7 @@ Warnings
 
 Bugs
 ----
-   email: p.scott@shu.ac.uk
+   email: peterscott@pobox.com
 
 ______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________
 
@@ -102,13 +102,13 @@ usage (){
 # mkTmp - make temp dir and delete it automatically on exit or failure
 #         Eg: mkTmp; ... > $TMP/temp
 #
+# Be careful not to exit from a subshell and lose an exit code!
+# -------------------------------------------------------------
+#
 mkTmp(){
   TMP=/tmp/$NAME.$$
 
-  # Beware of exit from a subshell and losing exit code
-  #
-  trap 'code=$?; rm -fr $TMP 2> /dev/null; exit $code' \
-                              EXIT HUP INT QUIT ILL ABRT BUS FPE SEGV PIPE TERM
+  trap 'code=$?; rm -fr $TMP 2> /dev/null; exit $code' EXIT HUP INT QUIT TERM
   mkdir $TMP && return
   echo "$NAME: couldn't make \`$TMP' directory" >&2
   exit 2
@@ -116,6 +116,8 @@ mkTmp(){
 
 
 # checkSimple file - check file is plain, readable, not empty (Bourne shell)
+#
+#    return codes: 0=OK; 1=nosuch; 2=directory; 3=unreadable
 #
 checkSimple(){
   file=$1
