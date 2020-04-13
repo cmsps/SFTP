@@ -9,7 +9,7 @@
 # SFTP cmp [-s] [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Mon Apr 13 16:33:46 BST 2020
+# Mon Apr 13 17:09:44 BST 2020
 #
 
 <<'______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________'
@@ -92,7 +92,7 @@ usage (){
 	Usage: $NAME get | put  [user@]host|home|work[:port] dir file ...
 	       $NAME cmp [-s]   [user@]host|home|work[:port] dir file [localfile]
 	Option:
-	       -s   summary only -- no sdiff
+	       -s   return an error code and message instead of doing an sdiff
 	!
   exit 1
 }
