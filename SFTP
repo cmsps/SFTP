@@ -9,7 +9,7 @@
 # SFTP cmp [-s] [user@]host[:port] directory file [localfile]
 #                                           - compare file with local file
 #
-# Tue Jan 1 22:16:23 GMT 2019
+# Mon Apr 13 16:33:46 BST 2020
 #
 
 <<'______________D__O__C__U__M__E__N__T__A__T__I__O__N_____________'
@@ -315,11 +315,13 @@ case $mode in
      if [ $? -ne 0 ] ;then
           if [ "$summary" = yes ] ;then
                echo "$NAME: $localfile and remote $file differ" >&2
+               exit 8
           else
                printf '\n%-88s%s'   "Local $localfile" "Remote $file"
                printf '\n%-88s%s\n' "~~~~~"             "~~~~~~"
                sdiff -w 170 "$localfile" "$TMP/temp/$file"
+               exit 0   # user has seen sdiff;
+                        # don't need caller to act on this failure as well
           fi
-          exit 8
      fi
 esac
